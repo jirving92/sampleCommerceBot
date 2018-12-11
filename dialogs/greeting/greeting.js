@@ -136,14 +136,14 @@ class Greeting extends ComponentDialog {
     async promptForUniversityStep(step) {
         // save name, if prompted for
         const userProfile = await this.userProfileAccessor.get(step.context);
-        if (userProfile.name === undefined && step.result) {
-            let lowerCaseName = step.result;
+        if (userProfile.city === undefined && step.result) {
+            let lowerCaseCity = step.result;
             // capitalize and set name
-            userProfile.name = lowerCaseName.charAt(0).toUpperCase() + lowerCaseName.substr(1);
+            userProfile.city = lowerCaseCity.charAt(0).toUpperCase() + lowerCaseCity.substr(1);
             await this.userProfileAccessor.set(step.context, userProfile);
         }
         if (!userProfile.university) {
-            return await step.prompt(UNIVERSITY_PROMPT, `Hello ${ userProfile.name }, which University do you attend?`);
+            return await step.prompt(UNIVERSITY_PROMPT, `Hello ${ userProfile.name } from ${userProfile.city}, which University do you attend?`);
         } else {
             return await step.next();
         }
@@ -158,10 +158,10 @@ class Greeting extends ComponentDialog {
     async displayGreetingStep(step) {
         // Save city, if prompted for
         const userProfile = await this.userProfileAccessor.get(step.context);
-        if (userProfile.city === undefined && step.result) {
-            let lowerCaseCity = step.result;
+        if (userProfile.university === undefined && step.result) {
+            let lowerCaseUniversity = step.result;
             // capitalize and set city
-            userProfile.city = lowerCaseCity.charAt(0).toUpperCase() + lowerCaseCity.substr(1);
+            userProfile.university = lowerCaseUniversity.charAt(0).toUpperCase() + lowerCaseUniversity.substr(1);
             await this.userProfileAccessor.set(step.context, userProfile);
         } 
         if (userProfile.university === undefined && step.result) {
@@ -211,7 +211,7 @@ class Greeting extends ComponentDialog {
         if (value.length >= UNIVERSITY_LENGTH_MIN) {
             return VALIDATION_SUCCEEDED;
         } else {
-            await validatorContext.context.sendActivity(`University names needs to be at least ${ CITY_LENGTH_MIN } characters long.`);
+            await validatorContext.context.sendActivity(`University names needs to be at least ${ UNIVERSITY_LENGTH_MIN } characters long.`);
             return VALIDATION_FAILED;
         }
     }

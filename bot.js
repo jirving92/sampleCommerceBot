@@ -31,6 +31,7 @@ const NONE_INTENT = 'None';
 // Supported LUIS Entities, defined in ./dialogs/greeting/resources/greeting.lu
 const USER_NAME_ENTITIES = ['userName', 'userName_patternAny'];
 const USER_LOCATION_ENTITIES = ['userLocation', 'userLocation_patternAny'];
+const USER_UNIVERSITY_ENTITIES = ['university', 'university_patternAny'];
 
 // Get SQL Information & setup connection
 const configFile = require('./config');
@@ -290,6 +291,13 @@ class BasicBot {
                     let lowerCaseCity = luisResult.entities[city][0];
                     // capitalize and set user name
                     userProfile.city = lowerCaseCity.charAt(0).toUpperCase() + lowerCaseCity.substr(1);
+                }
+            });
+            USER_UNIVERSITY_ENTITIES.forEach(university => {
+                if (luisResult.entities[university] !== undefined) {
+                    let lowerCaseUniversity = luisResult.entities[university][0];
+                    // capitalize and set user name
+                    userProfile.university = lowerCaseUniversity.charAt(0).toUpperCase() + lowerCaseUniversity.substr(1);
                 }
             });
             // set the new values
