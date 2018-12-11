@@ -12,6 +12,7 @@ const { UserProfile } = require('./userProfile');
 // Minimum length requirements for city and name
 const CITY_LENGTH_MIN = 5;
 const NAME_LENGTH_MIN = 3;
+const UNIVERSITY_LENGTH_MIN = 3;
 
 // Dialog IDs 
 const PROFILE_DIALOG = 'profileDialog';
@@ -19,6 +20,7 @@ const PROFILE_DIALOG = 'profileDialog';
 // Prompt IDs
 const NAME_PROMPT = 'namePrompt';
 const CITY_PROMPT = 'cityPrompt';
+const UNIVERSITY_PROMPT = 'universityPromp';
 
 const VALIDATION_SUCCEEDED = true;
 const VALIDATION_FAILED = !VALIDATION_SUCCEEDED;
@@ -48,12 +50,14 @@ class Greeting extends ComponentDialog {
             this.initializeStateStep.bind(this),
             this.promptForNameStep.bind(this),
             this.promptForCityStep.bind(this),
+            this.promptForUniversityStep.bind(this),
             this.displayGreetingStep.bind(this)
         ]));
 
         // Add text prompts for name and city
         this.addDialog(new TextPrompt(NAME_PROMPT, this.validateName));
         this.addDialog(new TextPrompt(CITY_PROMPT, this.validateCity));
+        this.addDialog(new TextPrompt(UNIVERSITY_PROMPT, this.validateUniversity));
 
         // Save off our state accessor for later use
         this.userProfileAccessor = userProfileAccessor;
@@ -88,7 +92,7 @@ class Greeting extends ComponentDialog {
     async promptForNameStep(step) {
         const userProfile = await this.userProfileAccessor.get(step.context);
         // if we have everything we need, greet user and return
-        if (userProfile !== undefined && userProfile.name !== undefined && userProfile.city !== undefined) {
+        if (userProfile !== undefined && userProfile.name !== undefined && userProfile.city !== undefined && userProfile.university !== undefined) {
             return await this.greetUser(step);
         }
         if (!userProfile.name) {
@@ -124,6 +128,29 @@ class Greeting extends ComponentDialog {
     /**
      * Waterfall Dialog step functions.
      *
+     * Using a text prompt, prompt the user for the city in which they live.
+     * Only prompt if we don't have this information already.
+     *
+     * @param {WaterfallStepContext} step contextual information for the current step being executed
+     */
+    async promptForUniversityStep(step) {
+        // save name, if prompted for
+        const userProfile = await this.userProfileAccessor.get(step.context);
+        if (userProfile.name === undefined && step.result) {
+            let lowerCaseName = step.result;
+            // capitalize and set name
+            userProfile.name = lowerCaseName.charAt(0).toUpperCase() + lowerCaseName.substr(1);
+            await this.userProfileAccessor.set(step.context, userProfile);
+        }
+        if (!userProfile.university) {
+            return await step.prompt(UNIVERSITY_PROMPT, `Hello ${ userProfile.name }, which University do you attend?`);
+        } else {
+            return await step.next();
+        }
+    }
+    /**
+     * Waterfall Dialog step functions.
+     *
      * Having all the data we need, simply display a summary back to the user.
      *
      * @param {WaterfallStepContext} step contextual information for the current step being executed
@@ -136,7 +163,10 @@ class Greeting extends ComponentDialog {
             // capitalize and set city
             userProfile.city = lowerCaseCity.charAt(0).toUpperCase() + lowerCaseCity.substr(1);
             await this.userProfileAccessor.set(step.context, userProfile);
-        }
+        } 
+        if (userProfile.university === undefined && step.result) {
+            await this.userProfileAccessor.set(step.context, userProfile);
+        } 
         return await this.greetUser(step);
     }
     /**
@@ -169,6 +199,23 @@ class Greeting extends ComponentDialog {
             return VALIDATION_FAILED;
         }
     }
+
+    /**
+     * Validator function to verify if University meets required constraints.
+     *
+     * @param {PromptValidatorContext} validation context for this validator.
+     */
+    async validateUniversity(validatorContext) {
+        // Validate that the user entered a minimum length for their University
+        const value = (validatorContext.recognized.value || '').trim();
+        if (value.length >= UNIVERSITY_LENGTH_MIN) {
+            return VALIDATION_SUCCEEDED;
+        } else {
+            await validatorContext.context.sendActivity(`University names needs to be at least ${ CITY_LENGTH_MIN } characters long.`);
+            return VALIDATION_FAILED;
+        }
+    }
+
     /**
      * Helper function to greet user with information in greetingState.
      *
@@ -177,7 +224,7 @@ class Greeting extends ComponentDialog {
     async greetUser(step) {
         const userProfile = await this.userProfileAccessor.get(step.context);
         // Display to the user their profile information and end dialog
-        await step.context.sendActivity(`Hi ${ userProfile.name }, from ${ userProfile.city }, nice to meet you!`);
+        await step.context.sendActivity(`Hi ${ userProfile.name }, from ${ userProfile.city }, attending ${userProfile.university}, nice to meet you!`);
         await step.context.sendActivity(`You can always say 'My name is <your name> to reintroduce yourself to me.`);
         return await step.endDialog();
     }
