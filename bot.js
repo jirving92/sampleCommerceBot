@@ -32,6 +32,50 @@ const NONE_INTENT = 'None';
 const USER_NAME_ENTITIES = ['userName', 'userName_patternAny'];
 const USER_LOCATION_ENTITIES = ['userLocation', 'userLocation_patternAny'];
 
+// Get SQL Information & setup connection
+const configFile = require('./config');
+//Setup SQL Connection
+var Connection = require('tedious').Connection;
+var config = {  
+    userName: configFile.sqlUsername,  
+    password: configFile.sqlPassword,  
+    server: configFile.sqlServerName,  
+    // If you are on Microsoft Azure, you need this:  
+    options: {encrypt: true, database: configFile.sqlDatabaseName}  
+};  
+var connection = new Connection(config);  
+    connection.on('connect', function(err) {  
+    // If no error, then good to proceed.  
+        console.log("Connected");  
+        executedStatement();
+    });
+var Request = require('tedious').Request;
+var TYPES = require('tedious').TYPES;
+
+function executedStatement() {
+    request = new Request("SELECT * FROM dbo.Book;", function(err){
+     if (err) {
+         console.log(err);
+     }   
+    });
+    var result = "";
+    request.on('row', function(columns) {
+        columns.forEach(function (column) {
+            if (column.value === null) {
+                console.log('NULL');
+            } else {
+                result+= column.value + " ";
+            }
+        });
+        console.log(result);
+        result = "";
+    });
+    request.on('done', function(rowCount, more) {
+        console.log(rowCount + ' rows returned');
+    });
+    connection.execSql(request);
+}
+
 /**
  * Demonstrates the following concepts:
  *  Displaying a Welcome Card, using Adaptive Card technology

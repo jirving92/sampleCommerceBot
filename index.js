@@ -109,7 +109,8 @@ server.listen(process.env.port || process.env.PORT || 3978, function() {
     console.log(`\nGet Bot Framework Emulator: https://aka.ms/botframework-emulator`);
     console.log(`\nTo talk to your bot, open basic-bot.bot file in the Emulator`);
     console.log(`\n Username: `, configFile.sqlUsername);
-});
+}
+);
 
 // Listen for incoming activities and route them to your bot main dialog.
 server.post('/api/messages', (req, res) => {
