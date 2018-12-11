@@ -133,10 +133,11 @@ class BasicBot {
                             case GREETING_INTENT:
                                 await dc.beginDialog(GREETING_DIALOG);
                                 await context.sendActivity(`LUIS Top Scoring Intent: ${ topIntent}`);
-                                // justAdded
-                                var reply = MessageFactory.suggestedActions(['Red', 'Yellow', 'Blue'], 'Which is the best color?');
-                                await context.sendActivity(reply);
-                                //JustAddedAbove
+                                // FOR ADDING THE QUESTIONS THE USER CAN SELECT
+                                // // justAdded
+                                // var reply = MessageFactory.suggestedActions(['Red', 'Yellow', 'Blue'], 'Which is the best color?');
+                                // await context.sendActivity(reply);
+                                // //JustAddedAbove
                                 break;
                             case NONE_INTENT:
                             default:
