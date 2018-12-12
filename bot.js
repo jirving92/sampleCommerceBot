@@ -6,7 +6,7 @@
 // Import required Bot Builder
 const { ActivityTypes, CardFactory, MessageFactory } = require('botbuilder');
 const { LuisRecognizer } = require('botbuilder-ai');
-const { DialogSet, DialogTurnStatus } = require('botbuilder-dialogs');
+const { DialogSet, DialogTurnStatus, WaterfallDialog } = require('botbuilder-dialogs');
 
 const { UserProfile } = require('./dialogs/greeting/userProfile');
 const { WelcomeCard } = require('./dialogs/welcome');
@@ -32,6 +32,10 @@ const NONE_INTENT = 'None';
 const USER_NAME_ENTITIES = ['userName', 'userName_patternAny'];
 const USER_LOCATION_ENTITIES = ['userLocation', 'userLocation_patternAny'];
 const USER_UNIVERSITY_ENTITIES = ['university', 'university_patternAny'];
+const USER_BIOLOGY_ENTITIES = ['biology', 'biology_patternAny'];
+const USER_PSYCHOLOGY_ENTITIES = ['psychology', 'psychology_patternAny'];
+const USER_MATH_ENTITIES = ['math', 'math_patternAny'];
+const USER_COMPUTERSCIENCE_ENTITIES = ['computerScience', 'computerScience_patternAny'];
 
 // Get SQL Information & setup connection
 const configFile = require('./config');
@@ -177,7 +181,7 @@ class BasicBot {
                         switch (topIntent) {
                             case GREETING_INTENT:
                                 await dc.beginDialog(GREETING_DIALOG);
-                                await context.sendActivity(`LUIS Top Scoring Intent: ${ topIntent}`);
+                                // await context.sendActivity(`LUIS Top Scoring Intent: ${ topIntent}`);
                                 // FOR ADDING THE QUESTIONS THE USER CAN SELECT
                                 // // justAdded
                                 // var reply = MessageFactory.suggestedActions(['Red', 'Yellow', 'Blue'], 'Which is the best color?');
@@ -228,7 +232,6 @@ class BasicBot {
                 }
             }
         }
-
         // make sure to persist state at the end of a turn.
         await this.conversationState.saveChanges(context);
         await this.userState.saveChanges(context);
@@ -284,6 +287,7 @@ class BasicBot {
                     let lowerCaseName = luisResult.entities[name][0];
                     // capitalize and set user name
                     userProfile.name = lowerCaseName.charAt(0).toUpperCase() + lowerCaseName.substr(1);
+                    console.log("HERE IN ENTITY");
                 }
             });
             USER_LOCATION_ENTITIES.forEach(city => {
@@ -298,6 +302,15 @@ class BasicBot {
                     let lowerCaseUniversity = luisResult.entities[university][0];
                     // capitalize and set user name
                     userProfile.university = lowerCaseUniversity.charAt(0).toUpperCase() + lowerCaseUniversity.substr(1);
+                }
+            });
+            USER_BIOLOGY_ENTITIES.forEach(course => {
+                if (luisResult.entities[course] !== undefined) {
+                    console.log("ENTITIES: ", this.luisResult.entities[course]);
+                    let lowerCaseCourse = luisResult.entities[university][0];
+                    // capitalize and set user name
+                    lowerCaseCourse = "biology";
+                    userProfile.course = lowerCaseCourse;
                 }
             });
             // set the new values

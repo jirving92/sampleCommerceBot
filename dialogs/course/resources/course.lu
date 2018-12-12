@@ -1,0 +1,57 @@
+> Course intent and utterances
+> See https://github.com/Microsoft/botbuilder-tools/tree/master/packages/Ludown to learn more about .lu files and the Ludown CLI tool.
+# Course
+
+> Add utterances with machine learned simple entity values
+- what do I need for {biology=biology}
+- {math=calc} book
+- {math=calc}
+- {computerScience=programming} text books
+- what do i need for {computerScience=programming}
+- {computerScience=programming}
+- what do i need for {computerScience=computer} science
+- what do i need for {biology=biol}
+- what do i need for {math=calculus}
+- what do i need for {math=math}
+- what do i need for {psychology=psych}
+- i'm looking for {psychology=psychology} textbook
+- i'm looking for {math=math} text book
+- {biology=biol}
+- {biology=bio}
+- {psychology=psych}
+- i'm looking for {psychology=psych} book
+- i'm looking for {biology=bio} text book
+- {computerScience=computer} science
+- {math=math}
+- {psychology=psychology}
+- {biology=biology}
+
+> Add patterns with pattern.any entitiy
+- what do i need for {biology_patternAny}
+- what do i need for {psychology_patternAny}
+- what do i need for {math_patternAny}
+- what do i need for {computerScience_patternAny}
+- {biology_patternAny}
+- {psychology_patternAny}
+- {math_patternAny}
+- {computerScience_patternAny}
+- {biology_patternAny} book
+- {psychology_patternAny} book
+- {math_patternAny} book
+- {computerScience_patternAny} book
+- {biology_patternAny} text books
+- {psychology_patternAny} text books
+- {math_patternAny} text books
+- {computerScience_patternAny} text books
+- i'm looking for {biology_patternAny} textbook
+- i'm looking for {psychology_patternAny} textbook
+- i'm looking for {math_patternAny} textbook
+- i'm looking for {computerScience_patternAny} textbook
+- i'm looking for {biology_patternAny} text book
+- i'm looking for {psychology_patternAny} text book
+- i'm looking for {math_patternAny} text book
+- i'm looking for {computerScience_patternAny} text book
+- i'm looking for {biology_patternAny} book
+- i'm looking for {psychology_patternAny} book
+- i'm looking for {math_patternAny} book
+- i'm looking for {computerScience_patternAny} book

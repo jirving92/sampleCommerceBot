@@ -6,6 +6,10 @@
 // Import required Bot Builder
 const { ComponentDialog, WaterfallDialog, TextPrompt } = require('botbuilder-dialogs');
 
+const { LuisRecognizer } = require('botbuilder-ai');
+
+const { BotConfiguration } = require('botframework-config');
+
 // User state for greeting dialog
 const { UserProfile } = require('./userProfile');
 
@@ -13,14 +17,18 @@ const { UserProfile } = require('./userProfile');
 const CITY_LENGTH_MIN = 5;
 const NAME_LENGTH_MIN = 3;
 const UNIVERSITY_LENGTH_MIN = 3;
+const COURSE_LENGTH_MIN = 3;
 
 // Dialog IDs 
 const PROFILE_DIALOG = 'profileDialog';
 
+const LUIS_CONFIGURATION = 'BasicBotLuisApplication';
+
 // Prompt IDs
 const NAME_PROMPT = 'namePrompt';
 const CITY_PROMPT = 'cityPrompt';
-const UNIVERSITY_PROMPT = 'universityPromp';
+const UNIVERSITY_PROMPT = 'universityPrompt';
+const COURSE_PROMPT = 'coursePrompt';
 
 const VALIDATION_SUCCEEDED = true;
 const VALIDATION_FAILED = !VALIDATION_SUCCEEDED;
@@ -36,12 +44,14 @@ const VALIDATION_FAILED = !VALIDATION_SUCCEEDED;
  * @param {PropertyStateAccessor} userProfileAccessor property accessor for user state
  */
 class Greeting extends ComponentDialog {
-    constructor(dialogId, userProfileAccessor) {
+    constructor(dialogId, userProfileAccessor ) {
         super(dialogId);
+       
 
         // validate what was passed in
         if (!dialogId) throw ('Missing parameter.  dialogId is required');
         if (!userProfileAccessor) throw ('Missing parameter.  userProfileAccessor is required');
+
 
         // Add a water fall dialog with 4 steps.
         // The order of step function registration is importent
@@ -51,13 +61,16 @@ class Greeting extends ComponentDialog {
             this.promptForNameStep.bind(this),
             this.promptForCityStep.bind(this),
             this.promptForUniversityStep.bind(this),
-            this.displayGreetingStep.bind(this)
+            this.displayGreetingStep.bind(this),
+            this.promptForCourse.bind(this),
+            this.displayCourseStep.bind(this)
         ]));
 
         // Add text prompts for name and city
         this.addDialog(new TextPrompt(NAME_PROMPT, this.validateName));
         this.addDialog(new TextPrompt(CITY_PROMPT, this.validateCity));
         this.addDialog(new TextPrompt(UNIVERSITY_PROMPT, this.validateUniversity));
+        this.addDialog(new TextPrompt(COURSE_PROMPT, this.validateCourse));
 
         // Save off our state accessor for later use
         this.userProfileAccessor = userProfileAccessor;
@@ -217,6 +230,22 @@ class Greeting extends ComponentDialog {
     }
 
     /**
+     * Validator function to verify if course name meets required constraints.
+     *
+     * @param {PromptValidatorContext} validation context for this validator.
+     */
+    async validateCourse(validatorContext) {
+        // Validate that the user entered a minimum length for their University
+        const value = (validatorContext.recognized.value || '').trim();
+        if (value.length >= COURSE_LENGTH_MIN) {
+            return VALIDATION_SUCCEEDED;
+        } else {
+            await validatorContext.context.sendActivity(`Course names needs to be at least ${ COURSE_LENGTH_MIN } characters long.`);
+            return VALIDATION_FAILED;
+        }
+    }
+
+    /**
      * Helper function to greet user with information in greetingState.
      *
      * @param {WaterfallStepContext} step contextual information for the current step being executed
@@ -226,8 +255,72 @@ class Greeting extends ComponentDialog {
         // Display to the user their profile information and end dialog
         await step.context.sendActivity(`Hi ${ userProfile.name }, from ${ userProfile.city }, attending ${userProfile.university}, nice to meet you!`);
         await step.context.sendActivity(`You can always say 'My name is <your name> to reintroduce yourself to me.`);
+        // return await step.endDialog();
+        // return await this.promptForCourse(step);
+        return await step.next();
+    }
+
+    /**
+     * Waterfall Dialog step functions.
+     *
+     * Using a text prompt, prompt the user for the course in which they're looking for text books.
+     * Only prompt if we don't have this information already.
+     *
+     * @param {WaterfallStepContext} step contextual information for the current step being executed
+     */
+    async promptForCourse(step) {
+        // save name, if prompted for
+        const userProfile = await this.userProfileAccessor.get(step.context);
+        if (!userProfile.course) {
+            console.log("if");
+            return await step.prompt(COURSE_PROMPT, `${ userProfile.name }, which course are you searching for?`);
+        } else {
+            return await this.displayCourseStep(step);
+        }
+    }
+
+    /**
+     * Waterfall Dialog step functions.
+     *
+     * Having all the data we need, simply display a summary back to the user.
+     *
+     * @param {WaterfallStepContext} step contextual information for the current step being executed
+     */
+    async displayCourseStep(step) {
+        // Save city, if prompted for
+        // console.log("STEP CONTEXT: ", step.context);
+        // console.log("STEP RESULT: ", step.result);
+        // const results = await this.luisRecognizer.recognize(step.result);
+        // const results2 = await this.luisRecognizer.recognize(step.context);
+        // console.log("LUIS RESULTS: ", results);
+        // console.log("LUIS CONTEXT: ", results2);
+        // const topIntent = LuisRecognizer.topIntent(results);
+        const userProfile = await this.userProfileAccessor.get(step.context);
+        if (userProfile.course === undefined && step.result) {
+            let lowerCaseCourse = step.result;
+            // capitalize and set city
+            userProfile.course = lowerCaseCourse.charAt(0).toUpperCase() + lowerCaseCourse.substr(1);
+            await this.userProfileAccessor.set(step.context, userProfile);
+        } 
+        if (userProfile.course === undefined && step.result) {
+            await this.userProfileAccessor.set(step.context, userProfile);
+        } 
+        return await this.showUserCourse(step);
+    }
+
+     /**
+     * Helper function to greet user with information in greetingState.
+     *
+     * @param {WaterfallStepContext} step contextual information for the current step being executed
+     */
+    async showUserCourse(step) {
+        const userProfile = await this.userProfileAccessor.get(step.context);
+        // Display to the user their profile information and end dialog
+        await step.context.sendActivity(`You are looking for textbooks for ${userProfile.course}, is that correct?`);
+        // return await step.endDialog();
         return await step.endDialog();
     }
+
 }
 
 exports.GreetingDialog = Greeting;
