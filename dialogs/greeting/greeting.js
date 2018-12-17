@@ -23,7 +23,7 @@ const UNIVERSITY_LENGTH_MIN = 3;
 // Dialog IDs 
 const PROFILE_DIALOG = 'profileDialog';
 
-const LUIS_CONFIGURATION = 'BasicBotLuisApplication';
+const LUIS_CONFIGURATION = 'testbotluis';
 
 // Prompt IDs
 const NAME_PROMPT = 'namePrompt';
@@ -47,7 +47,7 @@ let temp = 0;
  * @param {PropertyStateAccessor} userProfileAccessor property accessor for user state
  */
 class Greeting extends ComponentDialog {
-    constructor(dialogId, userProfileAccessor ) {
+    constructor(dialogId, userProfileAccessor, REVIEW_SELECTION_DIALOG ) {
         super(dialogId);
        
 
@@ -77,6 +77,8 @@ class Greeting extends ComponentDialog {
 
         // Save off our state accessor for later use
         this.userProfileAccessor = userProfileAccessor;
+
+        this.REVIEW_SELECTION_DIALOG = REVIEW_SELECTION_DIALOG;
     }
     /**
      * Waterfall Dialog step functions.

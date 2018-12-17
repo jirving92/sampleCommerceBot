@@ -9,7 +9,10 @@ const { LuisRecognizer } = require("botbuilder-ai");
 const {
   DialogSet,
   DialogTurnStatus,
-  WaterfallDialog
+  WaterfallDialog,
+  TextPrompt,
+  NumberPrompt,
+  ChoicePrompt
 } = require("botbuilder-dialogs");
 
 const { UserProfile } = require("./dialogs/greeting/userProfile");
@@ -17,10 +20,24 @@ const { WelcomeCard } = require("./dialogs/welcome");
 const { GreetingDialog } = require("./dialogs/greeting");
 const { CourseDialog } = require("./dialogs/course");
 const { CourseCart } = require("./dialogs/course/courseCart");
+const {
+  BotConnection,
+  bioBooks,
+  mathBooks,
+  psychBooks,
+  computerScienceBooks
+} = require("./botConnection");
 
 // Greeting Dialog ID
 const GREETING_DIALOG = "greetingDialog";
 const COURSE_DIALOG = "courseDialog";
+const SELECTION_PROMPT = "prompt-companySelection";
+const DONE_OPTION = "done";
+const BOOK_OPTIONS = [];
+const BOOKS_SELECTED = "value-booksSelected";
+const TOP_LEVEL_DIALOG = "dialog-toplevel";
+const REVIEW_SELECTION_DIALOG = "dialog-reviewSelection";
+const END_OF_BOOKS_DIALOG = "dialog-reviewEndOfBooks";
 
 // State Accessor Properties
 const DIALOG_STATE_PROPERTY = "dialogState";
@@ -28,7 +45,7 @@ const USER_PROFILE_PROPERTY = "userProfileProperty";
 const COURSE_CART_PROPERTY = "courseCartProperty";
 
 // LUIS service type entry as defined in the .bot file.
-const LUIS_CONFIGURATION = "BasicBotLuisApplication";
+const LUIS_CONFIGURATION = "testbotluis";
 
 // Supported LUIS Intents.
 const GREETING_INTENT = "Greeting";
@@ -49,66 +66,19 @@ const USER_COMPUTERSCIENCE_ENTITIES = [
   "computerScience_patternAny"
 ];
 
-// Get SQL Information & setup connection
-const configFile = require("./config");
-//Setup SQL Connection
-var Connection = require("tedious").Connection;
-var config = {
-  userName: configFile.sqlUsername,
-  password: configFile.sqlPassword,
-  server: configFile.sqlServerName,
-  // If you are on Microsoft Azure, you need this:
-  options: { encrypt: true, database: configFile.sqlDatabaseName }
-};
-var connection = new Connection(config);
-connection.on("connect", function(err) {
-  // If no error, then good to proceed.
-  console.log("Connected");
-  executedStatement("biology");
-});
-var Request = require("tedious").Request;
-var TYPES = require("tedious").TYPES;
-
-var resultArray = [];
-
-function executedStatement(courseName) {
-  request = new Request(
-    `SELECT dbo.Book.name FROM dbo.Class 
-  LEFT JOIN dbo.Book
-  ON dbo.Class.pk_class_id = dbo.Book.fk_class_id AND
-  dbo.Class.name = '${courseName}';`,
-    function(err) {
-      if (err) {
-        console.log(err);
-      }
-    }
-  );
-  var result = "";
-  request.on("row", function(columns) {
-    columns.forEach(function(column) {
-      if (column.value === null) {
-        // console.log("NULL");
-      } else {
-        result += column.value + " ";
-        resultArray.push(column.value);
-      }
-    });
-    // console.log("RESULT: ", result);
-    // console.log("RESULT ARRAY: ", resultArray);
-    result = "";
-  });
-  connection.execSql(request);
-}
+//Connection
+var botConnection = new BotConnection();
+botConnection.Connection();
 
 /**
- * Demonstrates the following concepts:
- *  Displaying a Welcome Card, using Adaptive Card technology
- *  Use LUIS to model Greetings, Help, and Cancel interactions
- *  Use a Waterfall dialog to model multi-turn conversation flow
- *  Use custom prompts to validate user input
- *  Store conversation and user state
- *  Handle conversation interruptions
+ * Timeout in order to wait for the connection to be made
+ * and the results to be returned
  */
+setTimeout(() => console.log("FROM BOT: ", bioBooks), 5000);
+setTimeout(() => console.log("FROM BOT: ", mathBooks), 5000);
+setTimeout(() => console.log("FROM BOT: ", psychBooks), 5000);
+setTimeout(() => console.log("FROM BOT: ", computerScienceBooks), 5000);
+
 class BasicBot {
   /**
    * Constructs the three pieces necessary for this bot to operate:
@@ -155,12 +125,123 @@ class BasicBot {
     this.dialogs = new DialogSet(this.dialogState);
     // Add the Greeting dialog to the set
     this.dialogs.add(
-      new GreetingDialog(GREETING_DIALOG, this.userProfileAccessor)
+      new GreetingDialog(
+        GREETING_DIALOG,
+        this.userProfileAccessor,
+        REVIEW_SELECTION_DIALOG,
+        END_OF_BOOKS_DIALOG
+      )
     );
     this.dialogs.add(new CourseDialog(COURSE_DIALOG, this.courseCartAccessor));
+    this.dialogs.add(new ChoicePrompt(SELECTION_PROMPT));
+
+    // for the book selector
+    this.dialogs.add(
+      new WaterfallDialog(REVIEW_SELECTION_DIALOG)
+        .addStep(this.selectionStep.bind(this))
+        .addStep(this.loopStep.bind(this))
+    );
+
+    this.dialogs.add(
+      new WaterfallDialog(END_OF_BOOKS_DIALOG)
+      .addStep(this.removeLastBook.bind(this))
+      .addStep(this.loopStep.bind(this))
+    );
 
     this.conversationState = conversationState;
     this.userState = userState;
+  }
+
+  async removeLastBook(context) {
+    const list = Array.isArray(context.options) ? context.options : [];
+    context.values[BOOKS_SELECTED] = list;
+
+    //temp prompt until I get things to work the way I want
+    let message;
+    message =
+      `You have selected **${list[0]}**. You can add another book, ` +
+      "or choose `" +
+      DONE_OPTION +
+      "` to finish.";
+
+    //Create temp list
+    const options = bioBooks.filter(function(item) {
+      return item !== list[0];
+    });
+    options.push(DONE_OPTION);
+
+    return await context.prompt(SELECTION_PROMPT, {
+      prompt: message,
+      retryPrompt: "Please choose an option from the list.",
+      choices: options
+    });
+  }
+
+  //To select the book you are looking for
+  async selectionStep(context) {
+    const tempCourseType = context.context._activity.text;
+    console.log("SELECTION STEP");
+    // console.log("COURSE: ", tempCourseType);
+    console.log("CONTEXT", context);
+
+    /**
+     * Uses the same list. If this is the second step, it will add the
+     * new book to the list. If not, then starts new list.
+     * */
+    const list = Array.isArray(context.options) ? context.options : [];
+    context.values[BOOKS_SELECTED] = list;
+
+    //temp prompt until I get things to work the way I want
+    let message;
+    if (list.length === 0) {
+      message =
+        "Please select a textbook, or `" +
+        DONE_OPTION +
+        "` to move to the cart.";
+    } else {
+      message =
+        `You have selected **${list[0]}**. You can add another book, ` +
+        "or choose `" +
+        DONE_OPTION +
+        "` to finish.";
+    }
+
+    //Create temp list
+    const options =
+      list.length > 0
+        ? bioBooks.filter(function(item) {
+            return item !== list[0];
+          })
+        : bioBooks.slice();
+    options.push(DONE_OPTION);
+
+    return await context.prompt(SELECTION_PROMPT, {
+      prompt: message,
+      retryPrompt: "Please choose an option from the list.",
+      choices: options
+    });
+  }
+
+  async loopStep(context) {
+    //get list of books they selected, and if they're done or not
+    const list = context.values[BOOKS_SELECTED];
+    const choice = context.result;
+    console.log("CHOICE, ", choice);
+    const done = choice.value === DONE_OPTION;
+
+    if (!done) {
+      //add choice to the list
+      list.push(choice.value);
+    }
+    if (done || list.length > 1) {
+      console.log("HERE");
+      //exit if they're done
+      return await context.endDialog(list);
+    } else {
+      console.log("ELSE");
+      //otherwise, repeat dialog and continue adding to the list
+      return await context.replaceDialog(END_OF_BOOKS_DIALOG, list);
+    }
   }
 
   /**
@@ -173,34 +254,22 @@ class BasicBot {
    * @param {Context} context turn context from the adapter
    */
   async onTurn(context) {
-    // Handle Message activity type, which is the main activity type for shown within a conversational interface
-    // Message activities may contain text, speech, interactive cards, and binary or unknown attachments.
-    // see https://aka.ms/about-bot-activity-message to learn more about the message and other activity types
     if (context.activity.type === ActivityTypes.Message) {
       let dialogResult;
-      // Create a dialog context
+
       const dc = await this.dialogs.createContext(context);
 
-      // Perform a call to LUIS to retrieve results for the current activity message.
       const results = await this.luisRecognizer.recognize(context);
       const topIntent = LuisRecognizer.topIntent(results);
-      console.log("TOP INTENT: ", topIntent);
 
-      // update user profile property with any entities captured by LUIS
-      // This could be user responding with their name or city while we are in the middle of greeting dialog,
-      // or user saying something like 'i'm {userName}' while we have no active multi-turn dialog.
       await this.updateUserProfile(results, context);
 
-      // Based on LUIS topIntent, evaluate if we have an interruption.
-      // Interruption here refers to user looking for help/ cancel existing dialog
       const interrupted = await this.isTurnInterrupted(dc, results);
       if (interrupted) {
         if (dc.activeDialog !== undefined) {
-          // issue a re-prompt on the active dialog
           dialogResult = await dc.repromptDialog();
-        } // Else: We dont have an active dialog so nothing to continue here.
+        }
       } else {
-        // No interruption. Continue any active dialogs.
         dialogResult = await dc.continueDialog();
       }
 
@@ -214,6 +283,7 @@ class BasicBot {
             switch (topIntent) {
               case GREETING_INTENT:
                 await dc.beginDialog(GREETING_DIALOG);
+                // return await dc.context.beginDialog(REVIEW_SELECTION_DIALOG);
                 break;
               case COURSE_INTENT:
                 const usersCourseChoice = dc.context._activity.text.toLowerCase();
@@ -228,16 +298,27 @@ class BasicBot {
                 } else if (usersCourseChoice === "Computer Science") {
                   courseEntity = results.entities.computerScience[0];
                 }
-
-                // await dc.context.sendActivity(`These are the textbooks that are currently
-                // available for ${usersCourseChoice}:`);
-                executedStatement(usersCourseChoice);
-                console.log("RESULT: ", resultArray);
-                var reply = MessageFactory.suggestedActions(
-                  resultArray,
-                  "These are the textbooks that are currently available."
+                // BRING THIS BACK
+                await dc.beginDialog(
+                  REVIEW_SELECTION_DIALOG,
+                  usersCourseChoice
                 );
-                await dc.context.sendActivity(reply);
+
+                // await this.selectionStep(context);
+                // await this.loopStep(context);
+                // console.log("BIO BOOKS: ", bioBooks);
+                // console.log("PSYCH BOOKS: ", psychBooks);
+                // console.log("MATH BOOKS: ", mathBooks);
+                // console.log("CS BOOKS: ", computerScienceBooks);
+
+                // await dc.context
+                //   .sendActivity(`These are the textbooks that are currently
+                // available for ${usersCourseChoice}:`);
+                // var reply = MessageFactory.suggestedActions(
+                //   bioBooks,
+                //   "These are the textbooks that are currently available."
+                // );
+                // await dc.context.sendActivity(reply);
 
                 // await dc.beginDialog(COURSE_DIALOG);
                 break;
@@ -350,7 +431,7 @@ class BasicBot {
           // capitalize and set user name
           userProfile.name =
             lowerCaseName.charAt(0).toUpperCase() + lowerCaseName.substr(1);
-          console.log("HERE IN ENTITY");
+          // console.log("HERE IN ENTITY");
         }
       });
       USER_LOCATION_ENTITIES.forEach(city => {
