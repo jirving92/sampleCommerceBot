@@ -181,7 +181,7 @@ class BasicBot {
       "` to finish.";
 
     //Create temp list
-    const options = bioBooks.filter(function(item) {
+    const options = BOOK_OPTIONS.filter(function(item) {
       return item !== list[0];
     });
     options.push(DONE_OPTION);
@@ -196,6 +196,7 @@ class BasicBot {
   //To select the book you are looking for
   async selectionStep(context) {
     const tempCourseType = context.context._activity.text.toLowerCase();
+    console.log("BOOK OPTIONS FROM SELECTION: ", BOOK_OPTIONS);
     /**
      * Uses the same list. If this is the second step, it will add the
      * new book to the list. If not, then starts new list.
@@ -218,15 +219,15 @@ class BasicBot {
         "` to finish.";
     }
 
-    if (tempCourseType === "biology") {
-      BOOK_OPTIONS = bioBooks;
-    } else if (tempCourseType === "math") {
-      BOOK_OPTIONS = mathBooks;
-    } else if (tempCourseType === "psychology") {
-      BOOK_OPTIONS = psychBooks;
-    } else if (tempCourseType === "computer science") {
-      BOOK_OPTIONS = computerScienceBooks;
-    }
+    // if (tempCourseType === "biology") {
+    //   BOOK_OPTIONS = bioBooks;
+    // } else if (tempCourseType === "math") {
+    //   BOOK_OPTIONS = mathBooks;
+    // } else if (tempCourseType === "psychology") {
+    //   BOOK_OPTIONS = psychBooks;
+    // } else if (tempCourseType === "computer science") {
+    //   BOOK_OPTIONS = computerScienceBooks;
+    // }
 
     //Create temp list
     const options =
@@ -325,38 +326,25 @@ class BasicBot {
                 const usersCourseChoice = dc.context._activity.text.toLowerCase();
                 let courseEntity;
                 // console.log("CHOICE: ", usersCourseChoice);
-                if (usersCourseChoice === "Biology") {
+                if (usersCourseChoice === "biology") {
                   courseEntity = results.entities.biology[0];
-                } else if (usersCourseChoice === "Math") {
+                  BOOK_OPTIONS = bioBooks;
+                } else if (usersCourseChoice === "math") {
                   courseEntity = results.entities.math[0];
-                } else if (usersCourseChoice === "Psychology") {
+                  BOOK_OPTIONS = mathBooks;
+                } else if (usersCourseChoice === "psychology") {
                   courseEntity = results.entities.psychology[0];
-                } else if (usersCourseChoice === "Computer Science") {
+                  BOOK_OPTIONS = psychBooks;
+                } else if (usersCourseChoice === "computer science") {
                   courseEntity = results.entities.computerScience[0];
+                  BOOK_OPTIONS = computerScienceBooks;
                 }
+                console.log("BOOK OPTIONS FROM INTENT: ", BOOK_OPTIONS);
                 // BRING THIS BACK
                 await dc.beginDialog(
                   REVIEW_SELECTION_DIALOG,
                   usersCourseChoice
                 );
-
-                // await this.selectionStep(context);
-                // await this.loopStep(context);
-                // console.log("BIO BOOKS: ", bioBooks);
-                // console.log("PSYCH BOOKS: ", psychBooks);
-                // console.log("MATH BOOKS: ", mathBooks);
-                // console.log("CS BOOKS: ", computerScienceBooks);
-
-                // await dc.context
-                //   .sendActivity(`These are the textbooks that are currently
-                // available for ${usersCourseChoice}:`);
-                // var reply = MessageFactory.suggestedActions(
-                //   bioBooks,
-                //   "These are the textbooks that are currently available."
-                // );
-                // await dc.context.sendActivity(reply);
-
-                // await dc.beginDialog(COURSE_DIALOG);
                 break;
               case NONE_INTENT:
               default:
@@ -373,7 +361,8 @@ class BasicBot {
             break;
           case DialogTurnStatus.complete:
             // All child dialogs have ended. so do nothing.
-            await dc.context.sendActivity(`You have selected ${BOOK_LIST}`);
+            // await dc.context.sendActivity(`You have selected ${BOOK_LIST} `);
+            await dc.context.sendActivity(`You have selected ` + BOOK_LIST.join(' and ') + '.');
             break;
           default:
             // Unrecognized status from child dialog. Cancel all dialogs.
@@ -539,8 +528,7 @@ class BasicBot {
   }
 
   async supplyLoopStep(context) {
-    console.log("HERE IN SUPPLYLOOPSTEP");
-    //get list of books they selected, and if they're done or not
+    //get list of supplies they selected, and if they're done or not
     const list = context.values[SUPPLIES_SELECTED];
     const choice = context.result;
     const done = choice.value === DONE_OPTION;
