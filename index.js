@@ -6,6 +6,7 @@
 // Import required pckages
 const path = require('path');
 const restify = require('restify');
+var configFile = require('./config');
 
 // Import required bot services. See https://aka.ms/bot-services to learn more about the different parts of a bot.
 const { BotFrameworkAdapter, MemoryStorage, ConversationState, UserState } = require('botbuilder');
@@ -28,6 +29,7 @@ try {
     // Read bot configuration from .bot file.
     botConfig = BotConfiguration.loadSync(BOT_FILE, process.env.botFileSecret);
 } catch (err) {
+    console.log(err);
     console.error(`\nError reading bot file. Please ensure you have valid botFilePath and botFileSecret set for your environment.`);
     console.error(`\n - You can find the botFilePath and botFileSecret in the Azure App Service application settings.`);
     console.error(`\n - If you are running this bot locally, consider adding a .env file with botFilePath and botFileSecret.`);
@@ -107,7 +109,9 @@ server.listen(process.env.port || process.env.PORT || 3978, function() {
     console.log(`\n${ server.name } listening to ${ server.url }`);
     console.log(`\nGet Bot Framework Emulator: https://aka.ms/botframework-emulator`);
     console.log(`\nTo talk to your bot, open basic-bot.bot file in the Emulator`);
-});
+    console.log(`\n Username: `, configFile.sqlUsername);
+}
+);
 
 // Listen for incoming activities and route them to your bot main dialog.
 server.post('/api/messages', (req, res) => {

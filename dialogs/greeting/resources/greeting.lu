@@ -43,6 +43,17 @@
 - {userName=vishwac} is my name
 - you can assume i live in {userLocation=cairo}
 - you can call me {userName=steve}
+- i take classes at {university=smu} university
+- i take classes at {university=dal}
+- {university=mit}
+- {university=yale}
+- i attend {university=mit}
+- i attend {university=smu}
+- {university=dal}
+- {university=stfx} uni
+- study at {university=stfx} uni
+- study at {university=smu} university
+- i go to {university=dalhousie} university
 
 > Add patterns with pattern.any entitiy
 - some people call me {userName_patternAny}
@@ -59,3 +70,11 @@
 - call me {userName_patternAny}
 - i live in {userLocation_patternAny}
 - i'm {userName_patternAny}[,] [and i'm] from {userLocation_patternAny}
+- i take classes at {university_patternAny} university
+- i take classes at {university_patternAny}
+- {university_patternAny}
+- i attend {university_patternAny}
+- {university_patternAny} uni
+- study at {university_patternAny} uni
+- study at {university_patternAny} university
+- i go to {university_patternAny} university
