@@ -12,10 +12,15 @@ var TYPES = require("tedious").TYPES;
 
 // Variables to hold array of books
 var bioBooks = [];
+var bioBooksPrices = [];
 var psychBooks = [];
+var psychBooksPrices = [];
 var mathBooks = [];
+var mathBooksPrices = [];
 var computerScienceBooks = [];
+var computerScienceBooksPrices = [];
 var supplies = [];
+var suppliesPrices = [];
 
 var config = {
   userName: configFile.sqlUsername,
@@ -45,7 +50,7 @@ var supplyConnection = new Connection(config);
 
 function executedStatement(courseName) {
   request = new Request(
-    `SELECT dbo.Book.name FROM dbo.Class 
+    `SELECT dbo.Book.name, dbo.Book.price FROM dbo.Class 
     LEFT JOIN dbo.Book
     ON dbo.Class.pk_class_id = dbo.Book.fk_class_id AND
     dbo.Class.name = '${courseName}';`,
@@ -60,13 +65,21 @@ function executedStatement(courseName) {
       if (column.value === null) {
       } else {
         if (courseName === "biology") {
-          bioBooks.push(column.value);
+          if (column.metadata.colName === "price")
+            bioBooksPrices.push(column.value);
+          else bioBooks.push(column.value);
         } else if (courseName === "math") {
-          mathBooks.push(column.value);
+          if (column.metadata.colName === "price")
+            mathBooksPrices.push(column.value);
+          else mathBooks.push(column.value);
         } else if (courseName === "psychology") {
-          psychBooks.push(column.value);
+          if (column.metadata.colName === "price")
+            psychBooksPrices.push(column.value);
+          else psychBooks.push(column.value);
         } else if (courseName === "computer science") {
-          computerScienceBooks.push(column.value);
+          if (column.metadata.colName === "price")
+            computerScienceBooksPrices.push(column.value);
+          else computerScienceBooks.push(column.value);
         }
       }
     });
@@ -84,18 +97,21 @@ function executedStatement(courseName) {
 
 //Gets list of school supplies
 function getSupplies() {
-  request = new Request(`SELECT dbo.AddOns.name FROM dbo.AddOns;`, function(
-    err
-  ) {
-    if (err) {
-      console.log(err);
+  request = new Request(
+    `SELECT dbo.AddOns.name, dbo.AddOns.price FROM dbo.AddOns;`,
+    function(err) {
+      if (err) {
+        console.log(err);
+      }
     }
-  });
+  );
   request.on("row", function(columns) {
     columns.forEach(function(column) {
       if (column.value === null) {
       } else {
-        supplies.push(column.value);
+        if (column.metadata.colName === "price")
+          suppliesPrices.push(column.value);
+        else supplies.push(column.value);
       }
     });
   });
@@ -132,7 +148,12 @@ class BotConnection {
 
 exports.BotConnection = BotConnection;
 exports.bioBooks = bioBooks;
+exports.bioBooksPrices = bioBooksPrices;
 exports.mathBooks = mathBooks;
+exports.mathBooksPrices = mathBooksPrices;
 exports.psychBooks = psychBooks;
+exports.psychBooksPrices = psychBooksPrices;
 exports.computerScienceBooks = computerScienceBooks;
+exports.computerScienceBooksPrices = computerScienceBooksPrices;
 exports.supplies = supplies;
+exports.suppliesPrices = suppliesPrices;

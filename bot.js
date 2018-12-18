@@ -10,8 +10,6 @@ const {
   DialogSet,
   DialogTurnStatus,
   WaterfallDialog,
-  TextPrompt,
-  NumberPrompt,
   ChoicePrompt
 } = require("botbuilder-dialogs");
 
@@ -23,26 +21,33 @@ const { CourseCart } = require("./dialogs/course/courseCart");
 const {
   BotConnection,
   bioBooks,
+  bioBooksPrices,
   mathBooks,
+  mathBooksPrices,
   psychBooks,
+  psychBooksPrices,
   computerScienceBooks,
-  supplies
+  computerScienceBooksPrices,
+  supplies,
+  suppliesPrices
 } = require("./botConnection");
 
 // Greeting Dialog ID
 const GREETING_DIALOG = "greetingDialog";
 const COURSE_DIALOG = "courseDialog";
 const SUPPLY_SELECTION_DIALOG = "dialog-reviewSupplySelection";
+const ANOTHER_COURSE_SELECTION_DIALOG = "dialog-anotherCourseSelection";
 const SELECTION_PROMPT = "prompt-companySelection";
 const SUPPLY_SELECTION_PROMPT = "prompt-supplySelection";
+const ANOTHER_COURSE_SELECTION_PROMPT = "prompt-anotherCourseSelection";
 const DONE_OPTION = "done";
+const YES_OPTION = "yes";
 let BOOK_OPTIONS = [];
-let BOOK_LIST;
-let SUPPLY_OPTIONS = [];
-let SUPPLY_LIST;
+let BOOK_OPTIONS_PRICES = [];
+let BOOK_LIST = [];
+let SUPPLY_LIST = [];
 const BOOKS_SELECTED = "value-booksSelected";
 const SUPPLIES_SELECTED = "value-suppliesSelected";
-const TOP_LEVEL_DIALOG = "dialog-toplevel";
 const REVIEW_SELECTION_DIALOG = "dialog-reviewSelection";
 const END_OF_BOOKS_DIALOG = "dialog-reviewEndOfBooks";
 
@@ -82,10 +87,15 @@ botConnection.Connection();
  * and the results to be returned
  */
 setTimeout(() => console.log("FROM BOT: ", bioBooks), 5000);
+setTimeout(() => console.log("FROM BOT: ", bioBooksPrices), 5000);
 setTimeout(() => console.log("FROM BOT: ", mathBooks), 5000);
+setTimeout(() => console.log("FROM BOT: ", mathBooksPrices), 5000);
 setTimeout(() => console.log("FROM BOT: ", psychBooks), 5000);
+setTimeout(() => console.log("FROM BOT: ", psychBooksPrices), 5000);
 setTimeout(() => console.log("FROM BOT: ", computerScienceBooks), 5000);
+setTimeout(() => console.log("FROM BOT: ", computerScienceBooksPrices), 5000);
 setTimeout(() => console.log("FROM BOT: ", supplies), 5000);
+setTimeout(() => console.log("FROM BOT: ", suppliesPrices), 5000);
 
 class BasicBot {
   /**
@@ -138,12 +148,14 @@ class BasicBot {
         this.userProfileAccessor,
         REVIEW_SELECTION_DIALOG,
         END_OF_BOOKS_DIALOG,
-        SUPPLY_SELECTION_DIALOG
+        SUPPLY_SELECTION_DIALOG,
+        ANOTHER_COURSE_SELECTION_DIALOG
       )
     );
     this.dialogs.add(new CourseDialog(COURSE_DIALOG, this.courseCartAccessor));
     this.dialogs.add(new ChoicePrompt(SELECTION_PROMPT));
     this.dialogs.add(new ChoicePrompt(SUPPLY_SELECTION_PROMPT));
+    this.dialogs.add(new ChoicePrompt(ANOTHER_COURSE_SELECTION_PROMPT));
 
     // for the book selector
     this.dialogs.add(
@@ -164,6 +176,12 @@ class BasicBot {
         .addStep(this.supplyLoopStep.bind(this))
     );
 
+    this.dialogs.add(
+      new WaterfallDialog(ANOTHER_COURSE_SELECTION_DIALOG)
+        .addStep(this.selectAnotherCoursePrompt.bind(this))
+        .addStep(this.selectAnotherCourseLoop.bind(this))
+    );
+
     this.conversationState = conversationState;
     this.userState = userState;
   }
@@ -172,10 +190,11 @@ class BasicBot {
     const list = Array.isArray(context.options) ? context.options : [];
     context.values[BOOKS_SELECTED] = list;
 
-    //temp prompt until I get things to work the way I want
     let message;
     message =
-      `You have selected **${list[0]}**. You can add another book, ` +
+      `You have selected **${
+        list[0].split("(")[0]
+      }**. You can add another book, ` +
       "or choose `" +
       DONE_OPTION +
       "` to finish.";
@@ -195,8 +214,6 @@ class BasicBot {
 
   //To select the book you are looking for
   async selectionStep(context) {
-    const tempCourseType = context.context._activity.text.toLowerCase();
-    console.log("BOOK OPTIONS FROM SELECTION: ", BOOK_OPTIONS);
     /**
      * Uses the same list. If this is the second step, it will add the
      * new book to the list. If not, then starts new list.
@@ -204,7 +221,6 @@ class BasicBot {
     const list = Array.isArray(context.options) ? context.options : [];
     context.values[BOOKS_SELECTED] = list;
 
-    //temp prompt until I get things to work the way I want
     let message;
     if (list.length === 0) {
       message =
@@ -213,23 +229,22 @@ class BasicBot {
         "` to move to the cart.";
     } else {
       message =
-        `You have selected **${list[0]}**. You can add another book, ` +
+        `You have selected **${
+          list[0].split("(")[0]
+        }**. You can add another book, ` +
         "or choose `" +
         DONE_OPTION +
         "` to finish.";
     }
 
-    // if (tempCourseType === "biology") {
-    //   BOOK_OPTIONS = bioBooks;
-    // } else if (tempCourseType === "math") {
-    //   BOOK_OPTIONS = mathBooks;
-    // } else if (tempCourseType === "psychology") {
-    //   BOOK_OPTIONS = psychBooks;
-    // } else if (tempCourseType === "computer science") {
-    //   BOOK_OPTIONS = computerScienceBooks;
-    // }
+    for (var i = 0; i < BOOK_OPTIONS.length; i++) {
+      BOOK_OPTIONS[i] =
+        BOOK_OPTIONS[i] +
+        " (Price: $" +
+        BOOK_OPTIONS_PRICES[BOOK_OPTIONS.indexOf(BOOK_OPTIONS[i])] +
+        " )";
+    }
 
-    //Create temp list
     const options =
       list.length > 0
         ? BOOK_OPTIONS.filter(function(item) {
@@ -250,21 +265,17 @@ class BasicBot {
     const list = context.values[BOOKS_SELECTED];
     const choice = context.result;
     const done = choice.value === DONE_OPTION;
+    console.log("CHOICE: ", choice.value.split("(")[0]);
 
     if (!done) {
       //add choice to the list
       list.push(choice.value);
     }
     if (done || list.length > 1) {
-      // const dc = await this.dialogs.createContext(context);
       //exit if they're done
-      BOOK_LIST = list;
+      BOOK_LIST = BOOK_LIST.concat(list);
       console.log("BOOK LIST: ", BOOK_LIST);
       return await this.completedBookSelection(context);
-      // await dc.context.sendActivity(`You have selected ${BOOKS_SELECTED}:`);
-      // return await this.completedBookSelection(context);
-
-      // return await context.endDialog(list);
     } else {
       //otherwise, repeat dialog and continue adding to the list
       return await context.replaceDialog(END_OF_BOOKS_DIALOG, list);
@@ -278,6 +289,13 @@ class BasicBot {
    * @param {Context} context
    */
   async completedBookSelection(context) {
+    for (var i = 0; i < supplies.length; i++) {
+      supplies[i] =
+        supplies[i] +
+        " (Price: $" +
+        suppliesPrices[supplies.indexOf(supplies[i])] +
+        " )";
+    }
     return await context.beginDialog(SUPPLY_SELECTION_DIALOG);
   }
 
@@ -320,7 +338,6 @@ class BasicBot {
             switch (topIntent) {
               case GREETING_INTENT:
                 await dc.beginDialog(GREETING_DIALOG);
-                // return await dc.context.beginDialog(REVIEW_SELECTION_DIALOG);
                 break;
               case COURSE_INTENT:
                 const usersCourseChoice = dc.context._activity.text.toLowerCase();
@@ -329,17 +346,20 @@ class BasicBot {
                 if (usersCourseChoice === "biology") {
                   courseEntity = results.entities.biology[0];
                   BOOK_OPTIONS = bioBooks;
+                  BOOK_OPTIONS_PRICES = bioBooksPrices;
                 } else if (usersCourseChoice === "math") {
                   courseEntity = results.entities.math[0];
                   BOOK_OPTIONS = mathBooks;
+                  BOOK_OPTIONS_PRICES = mathBooksPrices;
                 } else if (usersCourseChoice === "psychology") {
                   courseEntity = results.entities.psychology[0];
                   BOOK_OPTIONS = psychBooks;
+                  BOOK_OPTIONS_PRICES = psychBooksPrices;
                 } else if (usersCourseChoice === "computer science") {
                   courseEntity = results.entities.computerScience[0];
+                  BOOK_OPTIONS_PRICES = computerScienceBooksPrices;
                   BOOK_OPTIONS = computerScienceBooks;
                 }
-                console.log("BOOK OPTIONS FROM INTENT: ", BOOK_OPTIONS);
                 // BRING THIS BACK
                 await dc.beginDialog(
                   REVIEW_SELECTION_DIALOG,
@@ -361,8 +381,45 @@ class BasicBot {
             break;
           case DialogTurnStatus.complete:
             // All child dialogs have ended. so do nothing.
-            // await dc.context.sendActivity(`You have selected ${BOOK_LIST} `);
-            await dc.context.sendActivity(`You have selected ` + BOOK_LIST.join(' and ') + '.');
+
+            let totalCost = 0;
+            for (var i = 0; i < BOOK_LIST.length; i++) {
+              totalCost += Number(
+                BOOK_LIST[i]
+                  .substring(BOOK_LIST[i].indexOf("$") + 1)
+                  .split(" ")[0]
+              );
+            }
+
+            for (var i = 0; i < SUPPLY_LIST.length; i++) {
+              totalCost += Number(
+                SUPPLY_LIST[i]
+                  .substring(SUPPLY_LIST[i].indexOf("$") + 1)
+                  .split(" ")[0]
+              );
+            }
+
+            console.log("TOTAL COST: ", totalCost);
+
+            for (var i = 0; i < BOOK_LIST.length; i++) {
+              BOOK_LIST[i] = BOOK_LIST[i].split("(")[0];
+            }
+
+            for (var i = 0; i < SUPPLY_LIST.length; i++) {
+              SUPPLY_LIST[i] = SUPPLY_LIST[i].split("(")[0];
+            }
+
+            await dc.context.sendActivity(
+              `You have selected ` +
+                BOOK_LIST.join(" and ") +
+                "." +
+                ` For supplies you have selected ` +
+                SUPPLY_LIST.join(" and ") +
+                "." +
+                " Your total cost is: $" +
+                totalCost +
+                "."
+            );
             break;
           default:
             // Unrecognized status from child dialog. Cancel all dialogs.
@@ -496,20 +553,20 @@ class BasicBot {
     const list = Array.isArray(context.options) ? context.options : [];
     context.values[SUPPLIES_SELECTED] = list;
 
-    //temp prompt until I get things to work the way I want
     let message;
     if (list.length === 0) {
       message =
         "Please select supplies, or `" + DONE_OPTION + "` to move to the cart.";
     } else {
       message =
-        `You have selected **${list[0]}**. You can add more supplies, ` +
+        `You have selected **${
+          list[0].split("(")[0]
+        }**. You can add more supplies, ` +
         "or choose `" +
         DONE_OPTION +
         "` to finish.";
     }
 
-    //Create temp list
     const options =
       list.length > 0
         ? supplies.filter(function(item) {
@@ -517,8 +574,6 @@ class BasicBot {
           })
         : supplies.slice();
     options.push(DONE_OPTION);
-
-    console.log("HERE!!!");
 
     return await context.prompt(SUPPLY_SELECTION_PROMPT, {
       prompt: message,
@@ -538,12 +593,43 @@ class BasicBot {
       list.push(choice.value);
     }
     if (done || list.length > 1) {
-      SUPPLY_LIST = list;
+      SUPPLY_LIST = SUPPLY_LIST.concat(list);
       console.log("SUPPLY LIST: ", SUPPLY_LIST);
-      return await context.endDialog(list);
+      return await context.beginDialog(ANOTHER_COURSE_SELECTION_DIALOG);
     } else {
       //otherwise, repeat dialog and continue adding to the list
       return await context.replaceDialog(SUPPLY_SELECTION_DIALOG, list);
+    }
+  }
+
+  async selectAnotherCoursePrompt(context) {
+    let message;
+    message =
+      "Please select `" +
+      YES_OPTION +
+      "` if you'd lke to select another course, or `" +
+      DONE_OPTION +
+      "` to move to complete your order.";
+    //Create temp list
+    const options = ["yes", "done"];
+
+    return await context.prompt(ANOTHER_COURSE_SELECTION_PROMPT, {
+      prompt: message,
+      retryPrompt: "Please choose an option from the list.",
+      choices: options
+    });
+  }
+
+  async selectAnotherCourseLoop(context) {
+    const choice = context.result;
+    const done = choice.value === DONE_OPTION;
+    const yes = choice.value === YES_OPTION;
+
+    if (!done) {
+      //add choice to the list
+      return await context.beginDialog(GREETING_DIALOG);
+    } else {
+      return await context.endDialog();
     }
   }
 }
