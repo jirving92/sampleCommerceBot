@@ -15,6 +15,7 @@ var bioBooks = [];
 var psychBooks = [];
 var mathBooks = [];
 var computerScienceBooks = [];
+var supplies = [];
 
 var config = {
   userName: configFile.sqlUsername,
@@ -33,6 +34,7 @@ var bioConnection = new Connection(config);
 var mathConnection = new Connection(config);
 var psychConnection = new Connection(config);
 var csConnection = new Connection(config);
+var supplyConnection = new Connection(config);
 
 /**
  *
@@ -79,6 +81,27 @@ function executedStatement(courseName) {
     csConnection.execSql(request);
   }
 }
+
+//Gets list of school supplies
+function getSupplies() {
+  request = new Request(`SELECT dbo.AddOns.name FROM dbo.AddOns;`, function(
+    err
+  ) {
+    if (err) {
+      console.log(err);
+    }
+  });
+  request.on("row", function(columns) {
+    columns.forEach(function(column) {
+      if (column.value === null) {
+      } else {
+        supplies.push(column.value);
+      }
+    });
+  });
+  supplyConnection.execSql(request);
+}
+
 // Class that runs the connection function
 class BotConnection {
   Connection() {
@@ -99,6 +122,11 @@ class BotConnection {
       console.log("Connected to Comp Sci");
       executedStatement("computer science");
     });
+
+    supplyConnection.on("connect", function(err) {
+      console.log("Connected to supplies");
+      getSupplies();
+    });
   }
 }
 
@@ -107,3 +135,4 @@ exports.bioBooks = bioBooks;
 exports.mathBooks = mathBooks;
 exports.psychBooks = psychBooks;
 exports.computerScienceBooks = computerScienceBooks;
+exports.supplies = supplies;
